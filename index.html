@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control Ganadero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pasture-900:#232b1e;
+    --pasture-700:#3a4a30;
+    --pasture-500:#5c7248;
+    --parchment:#f2ecdd;
+    --parchment-dark:#e6dcc4;
+    --leather:#9c5233;
+    --leather-dark:#7a3f27;
+    --ochre:#c99a3e;
+    --ink:#221c15;
+    --ok:#4a7a4a;
+    --warn:#b0472c;
+    --radius:10px;
+    --shadow: 0 2px 0 rgba(34,28,21,0.15);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    background:var(--parchment);
+    color:var(--ink);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(34,28,21,0.06) 1px, transparent 0);
+    background-size: 18px 18px;
+  }
+  header{
+    background:var(--pasture-900);
+    color:var(--parchment);
+    padding:22px 20px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute;
+    right:-40px; top:-40px;
+    width:160px; height:160px;
+    border:14px solid rgba(242,236,221,0.06);
+    border-radius:50%;
+  }
+  .brand{
+    display:flex; align-items:center; gap:14px;
+  }
+  .tag{
+    width:52px;height:52px;border-radius:50% 50% 50% 4px;
+    background:var(--leather);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif; font-weight:900; font-size:20px;
+    color:var(--parchment);
+    box-shadow: inset 0 0 0 3px rgba(242,236,221,0.25);
+    flex-shrink:0;
+  }
+  h1{
+    font-family:'Fraunces',serif; font-weight:700; font-size:26px;
+    margin:0; letter-spacing:0.2px;
+  }
+  .sub{
+    margin:2px 0 0; font-size:13px; color:#c9c2a8; letter-spacing:0.3px;
+  }
+  .herdcount{
+    margin-top:14px; display:flex; gap:18px; flex-wrap:wrap;
+  }
+  .metric{
+    background:rgba(242,236,221,0.08);
+    border-radius:var(--radius);
+    padding:8px 14px;
+    min-width:84px;
+  }
+  .metric b{display:block;font-family:'Fraunces',serif;font-size:22px;}
+  .metric span{font-size:11px;color:#c9c2a8;text-transform:uppercase;letter-spacing:0.5px;}
+
+  nav{
+    display:flex; overflow-x:auto;
+    background:var(--pasture-700);
+    position:sticky; top:0; z-index:10;
+  }
+  nav button{
+    flex:1; min-width:110px;
+    background:none; border:none; color:#e4e0cf;
+    font-family:'Inter',sans-serif; font-weight:600; font-size:13px;
+    padding:13px 8px; cursor:pointer; white-space:nowrap;
+    border-bottom:3px solid transparent;
+  }
+  nav button.active{
+    color:#fff; border-bottom:3px solid var(--ochre); background:rgba(0,0,0,0.08);
+  }
+
+  main{padding:16px; max-width:760px; margin:0 auto 60px;}
+  .panel{display:none;}
+  .panel.active{display:block; animation:fade .2s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+  .card{
+    background:#fffdf7; border:1px solid var(--parchment-dark);
+    border-radius:var(--radius); padding:16px; margin-bottom:14px;
+    box-shadow:var(--shadow);
+  }
+  .card h2{
+    font-family:'Fraunces',serif; font-size:17px; margin:0 0 12px;
+    color:var(--pasture-900); display:flex; align-items:center; gap:8px;
+  }
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .grid label{grid-column:span 2;}
+  @media(max-width:420px){.grid{grid-template-columns:1fr;} .grid label{grid-column:span 1;}}
+  label{display:block; font-size:12px; font-weight:600; color:var(--pasture-700); margin-bottom:4px;}
+  input,select,textarea{
+    width:100%; padding:9px 10px; border:1px solid #d8cfb0; border-radius:7px;
+    font-family:'Inter',sans-serif; font-size:14px; background:#fff; color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--ochre); border-color:var(--ochre);}
+  .full{grid-column:1/-1;}
+  .btn{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--leather); color:#fff; border:none;
+    padding:10px 16px; border-radius:7px; font-weight:600; font-size:14px;
+    cursor:pointer; margin-top:10px;
+  }
+  .btn:hover{background:var(--leather-dark);}
+  .btn.secondary{background:var(--pasture-700);}
+  .btn.ghost{background:transparent; color:var(--leather); border:1px solid var(--leather); padding:8px 12px;}
+  .btn.small{padding:6px 10px; font-size:12px; margin-top:0;}
+
+  .item{
+    border-top:1px solid var(--parchment-dark); padding:10px 0;
+    display:flex; justify-content:space-between; gap:10px; align-items:flex-start;
+  }
+  .item:first-child{border-top:none;}
+  .item .id-tag{
+    background:var(--pasture-900); color:var(--parchment); font-size:11px;
+    padding:2px 8px; border-radius:20px; font-weight:700; display:inline-block; margin-bottom:3px;
+  }
+  .item .meta{font-size:12px; color:#6a624c;}
+  .item .name{font-weight:600; font-size:14.5px;}
+  .item-actions button{
+    background:none;border:none;cursor:pointer;color:var(--warn);font-size:12px;font-weight:600;
+  }
+  .empty{
+    text-align:center; padding:30px 10px; color:#8a8267;
+  }
+  .empty b{display:block; font-family:'Fraunces',serif; font-size:16px; color:var(--pasture-700); margin-bottom:4px;}
+
+  .badge{
+    display:inline-block; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:700;
+  }
+  .badge.ok{background:#e4ede0; color:var(--ok);} 
+  .badge.warn{background:#f6e3da; color:var(--warn);} 
+  .badge.neutral{background:#eee7d4; color:var(--pasture-700);} 
+
+  .sync-box{
+    background:var(--pasture-900); color:var(--parchment); border-radius:var(--radius); padding:18px;
+  }
+  .sync-box h2{color:var(--parchment); font-family:'Fraunces',serif; font-size:18px; margin-top:0;}
+  .sync-box p{font-size:13.5px; color:#cdc7ac; line-height:1.5;}
+  .device-id{
+    font-family:monospace; background:rgba(255,255,255,0.08); padding:8px 10px;
+    border-radius:6px; font-size:13px; margin:8px 0 14px; word-break:break-all;
+  }
+  .toast{
+    position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+    background:var(--pasture-900); color:#fff; padding:10px 18px; border-radius:30px;
+    font-size:13px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,0.25); z-index:100;
+    opacity:0; transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
+  select#animalFilter, input[type=file]{cursor:pointer;}
+  .gest-bar-track{
+    width:100%; height:8px; border-radius:6px; background:var(--parchment-dark); overflow:hidden; margin:6px 0 4px;
+  }
+  .gest-bar-fill{
+    height:100%; background:var(--leather); border-radius:6px;
+  }
+  .gest-bar-fill.near{background:var(--ochre);} 
+  .gest-card{border-top:1px solid var(--parchment-dark); padding:12px 0;}
+  .gest-card:first-child{border-top:none;padding-top:0;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="tag">🐄</div>
+    <div>
+      <h1>Control Ganadero</h1>
+      <p class="sub">Registro de hato bovino · funciona sin conexión</p>
+    </div>
+  </div>
+  <div class="herdcount">
+    <div class="metric"><b id="mAnimals">0</b><span>Animales</span></div>
+    <div class="metric"><b id="mHealth">0</b><span>Eventos sanitarios</span></div>
+    <div class="metric"><b id="mBreeding">0</b><span>Preñadas ahora</span></div>
+  </div>
+</header>
+
+<nav>
+  <button data-tab="animales" class="active">Animales</button>
+  <button data-tab="historial">Buscar</button>
+  <button data-tab="sanidad">Sanidad</button>
+  <button data-tab="reproduccion">Gestación</button>
+  <button data-tab="produccion">Producción</button>
+  <button data-tab="queseria">Quesería</button>
+  <button data-tab="sync">Sincronizar</button>
+</nav>
+
+<main>
+
+  <!-- BUSCAR / HISTORIAL POR NOMBRE -->
+  <section class="panel" id="panel-historial">
+    <div class="card">
+      <h2>Buscar animal por nombre</h2>
+      <label class="full">Nombre del animal
+        <input id="h_buscar" list="h_lista_nombres" placeholder="Escribe el nombre…" oninput="renderHistorialAnimal()">
+        <datalist id="h_lista_nombres"></datalist>
+      </label>
+    </div>
+    <div id="h_resultado"></div>
+  </section>
+
+  <!-- ANIMALES -->
+  <section class="panel active" id="panel-animales">
+    <div class="card">
+      <h2>+ Nuevo animal</h2>
+      <div class="grid">
+        <label class="full">Nombre *<input id="a_nombre" placeholder="Ej. Canela"></label>
+        <label>Arete / ID (opcional)<input id="a_id" placeholder="Ej. 0231"></label>
+        <label>Sexo
+          <select id="a_sexo"><option value="Hembra">Hembra</option><option value="Macho">Macho</option></select>
+        </label>
+        <label>Raza<input id="a_raza" placeholder="Ej. Brahman"></label>
+        <label>Fecha nacimiento<input id="a_nacimiento" type="date"></label>
+        <label>Peso actual (lb)<input id="a_peso" type="number" step="0.1"></label>
+        <label>Estado
+          <select id="a_estado"><option>Activo</option><option>Vendido</option><option>Muerto</option></select>
+        </label>
+        <label>Partos previos (si ya tuvo antes de esta app)<input id="a_partos" type="number" min="0" step="1" placeholder="0"></label>
+        <label class="full">Notas<textarea id="a_notas" rows="2"></textarea></label>
+      </div>
+      <button class="btn" id="animalSubmitBtn" onclick="addAnimal()">Guardar animal</button>
+    </div>
+    <div class="card">
+      <h2>Hato registrado</h2>
+      <div id="listAnimales"></div>
+    </div>
+  </section>
+
+  <!-- SANIDAD -->
+  <section class="panel" id="panel-sanidad">
+    <div class="card">
+      <h2>+ Nuevo evento sanitario</h2>
+      <div class="grid">
+        <label class="full">Animal *<select id="s_animal"></select></label>
+        <label>Tipo
+          <select id="s_tipo"><option>Vacuna</option><option>Desparasitación</option><option>Tratamiento</option><option>Revisión</option></select>
+        </label>
+        <label>Fecha<input id="s_fecha" type="date"></label>
+        <label class="full">Producto / detalle<input id="s_producto" placeholder="Ej. Ivermectina 1%"></label>
+        <label>Próxima dosis<input id="s_proxima" type="date"></label>
+        <label class="full">Notas<textarea id="s_notas" rows="2"></textarea></label>
+      </div>
+      <button class="btn" onclick="addHealth()">Guardar evento</button>
+    </div>
+    <div class="card">
+      <h2>Historial sanitario</h2>
+      <div id="listSanidad"></div>
+    </div>
+  </section>
+
+  <!-- GESTACION -->
+  <section class="panel" id="panel-reproduccion">
+    <div class="card">
+      <h2>Gestaciones en curso</h2>
+      <div id="listGestacionesActivas"></div>
+    </div>
+    <div class="card">
+      <h2>+ Nuevo registro de gestación</h2>
+      <div class="grid">
+        <label class="full">Hembra *<select id="r_animal"></select></label>
+        <label>Tipo
+          <select id="r_tipo" onchange="toggleParto()"><option>Monta</option><option>Inseminación</option><option>Transferencia de Embriones</option><option>Parto</option><option>Diagnóstico gestación</option></select>
+        </label>
+        <label>Fecha<input id="r_fecha" type="date" onchange="autoDueDate()"></label>
+        <label class="full">Toro / padre (o pajilla)<input id="r_padre" placeholder="ID o nombre"></label>
+        <label id="r_fpartoLabel">Fecha probable de parto<input id="r_fparto" type="date"></label>
+        <label>Resultado<input id="r_resultado" placeholder="Ej. Preñada / Cría hembra"></label>
+        <label class="full">Notas<textarea id="r_notas" rows="2"></textarea></label>
+      </div>
+      <button class="btn" onclick="addBreeding()">Guardar registro</button>
+    </div>
+    <div class="card">
+      <h2>Historial de gestación</h2>
+      <div id="listReproduccion"></div>
+    </div>
+  </section>
+
+  <!-- PRODUCCION -->
+  <section class="panel" id="panel-produccion">
+    <div class="card">
+      <h2>+ Nuevo registro de producción</h2>
+      <div class="grid">
+        <label class="full">Animal *<select id="p_animal"></select></label>
+        <label>Tipo
+          <select id="p_tipo"><option>Pesaje</option><option>Producción de leche (L/día)</option><option>Venta</option></select>
+        </label>
+        <label>Fecha<input id="p_fecha" type="date"></label>
+        <label>Valor<input id="p_valor" type="number" step="0.1" placeholder="lb, litros o $"></label>
+        <label class="full">Notas<textarea id="p_notas" rows="2"></textarea></label>
+      </div>
+      <button class="btn" onclick="addProduction()">Guardar registro</button>
+    </div>
+    <div class="card">
+      <h2>Historial de producción</h2>
+      <div id="listProduccion"></div>
+    </div>
+  </section>
+
+  <!-- QUESERIA -->
+  <section class="panel" id="panel-queseria">
+    <div class="card">
+      <h2>Resumen semanal (leche y queso)</h2>
+      <div id="weeklySummary"></div>
+    </div>
+    <div class="card">
+      <h2>+ Nueva producción de queso</h2>
+      <div class="grid">
+        <label>Fecha inicio<input id="q_fecha_inicio" type="date"></label>
+        <label>Fecha fin<input id="q_fecha_fin" type="date"></label>
+        <label>Tipo de queso<input id="q_tipo" placeholder="Ej. Fresco, Madurado"></label>
+        <label>Litros de leche usados<input id="q_litros" type="number" step="0.1"></label>
+        <label>Libras de queso obtenidas<input id="q_kg" type="number" step="0.1"></label>
+        <label class="full">Notas<textarea id="q_notas" rows="2"></textarea></label>
+      </div>
+      <button class="btn" onclick="addCheese()">Guardar producción de queso</button>
+    </div>
+    <div class="card">
+      <h2>Historial de quesería</h2>
+      <div id="listQueseria"></div>
+    </div>
+  </section>
+
+  <!-- SYNC -->
+  <section class="panel" id="panel-sync">
+    <div class="sync-box card">
+      <h2>Sincronizar entre dos dispositivos</h2>
+      <p>Esta app guarda todo en este dispositivo, sin necesidad de internet. Para juntar los datos de dos personas: cada quien exporta su archivo y lo importa en el otro dispositivo (por WhatsApp, correo, USB, etc). Los registros se combinan automáticamente por fecha de última edición, sin perder información.</p>
+      <div class="device-id">ID de este dispositivo: <span id="deviceId"></span></div>
+      <button class="btn" onclick="exportData()">⬇ Exportar datos (.json)</button>
+      <div style="margin-top:14px;">
+        <label style="color:#cdc7ac;">Importar y fusionar archivo de otro dispositivo</label>
+        <input type="file" id="importFile" accept="application/json" onchange="importData(event)">
+      </div>
+      <p id="lastSyncInfo" style="margin-top:12px;"></p>
+    </div>
+    <div class="card">
+      <h2>⚠ Zona de reinicio</h2>
+      <p style="font-size:13px;color:#6a624c;">Borra todos los datos guardados en este dispositivo. No se puede deshacer.</p>
+      <button class="btn ghost" onclick="resetAll()">Borrar todos los datos</button>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'ganado_data_v1';
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function nowIso(){ return new Date().toISOString(); }
+function calcularEdad(fechaNacimiento){
+  if(!fechaNacimiento) return null;
+  const hoy = new Date(todayInput()+'T00:00:00');
+  const nac = new Date(fechaNacimiento+'T00:00:00');
+  if(isNaN(nac.getTime()) || nac > hoy) return null;
+  let años = hoy.getFullYear() - nac.getFullYear();
+  let meses = hoy.getMonth() - nac.getMonth();
+  if(hoy.getDate() < nac.getDate()) meses--;
+  if(meses < 0){ años--; meses += 12; }
+  if(años <= 0){
+    return meses<=0 ? 'recién nacido' : meses+' mes'+(meses===1?'':'es');
+  }
+  return años+' año'+(años===1?'':'s')+(meses>0?' '+meses+' mes'+(meses===1?'':'es'):'');
+}
+function todayInput(){ return new Date().toISOString().slice(0,10); }
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  const fresh = { deviceId: 'DISP-'+uid().toUpperCase(), animals:[], health:[], breeding:[], production:[], cheese:[], lastSync:null };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+  return fresh;
+}
+let DATA = loadData();
+DATA.cheese = DATA.cheese || [];
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); render(); }
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ---------- TABS ----------
+document.querySelectorAll('nav button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- ANIMALES ----------
+let editingAnimalId = null;
+function addAnimal(){
+  const nombre = document.getElementById('a_nombre').value.trim();
+  if(!nombre){ showToast('Falta el nombre del animal'); return; }
+  const record = {
+    arete: document.getElementById('a_id').value.trim(),
+    nombre,
+    sexo: document.getElementById('a_sexo').value,
+    raza: document.getElementById('a_raza').value.trim(),
+    nacimiento: document.getElementById('a_nacimiento').value,
+    peso: document.getElementById('a_peso').value,
+    estado: document.getElementById('a_estado').value,
+    partosPrevios: parseInt(document.getElementById('a_partos').value)||0,
+    notas: document.getElementById('a_notas').value.trim(),
+    updatedAt: nowIso()
+  };
+  const wasEditing = !!editingAnimalId;
+  if(wasEditing){
+    const idx = DATA.animals.findIndex(a=>a.id===editingAnimalId);
+    if(idx>-1) DATA.animals[idx] = {...DATA.animals[idx], ...record};
+    editingAnimalId = null;
+    document.getElementById('animalSubmitBtn').textContent = 'Guardar animal';
+  }else{
+    record.id = uid();
+    DATA.animals.push(record);
+  }
+  ['a_id','a_nombre','a_raza','a_nacimiento','a_peso','a_partos','a_notas'].forEach(f=>document.getElementById(f).value='');
+  document.getElementById('a_sexo').value='Hembra';
+  document.getElementById('a_estado').value='Activo';
+  save();
+  showToast(wasEditing ? 'Animal actualizado' : 'Animal guardado');
+}
+function editAnimal(id){
+  const a = DATA.animals.find(x=>x.id===id);
+  if(!a) return;
+  editingAnimalId = id;
+  document.getElementById('a_nombre').value = a.nombre||'';
+  document.getElementById('a_id').value = a.arete||'';
+  document.getElementById('a_sexo').value = a.sexo||'Hembra';
+  document.getElementById('a_raza').value = a.raza||'';
+  document.getElementById('a_nacimiento').value = a.nacimiento||'';
+  document.getElementById('a_peso').value = a.peso||'';
+  document.getElementById('a_estado').value = a.estado||'Activo';
+  document.getElementById('a_partos').value = a.partosPrevios||0;
+  document.getElementById('a_notas').value = a.notas||'';
+  document.getElementById('animalSubmitBtn').textContent = 'Actualizar animal';
+  document.getElementById('panel-animales').scrollIntoView({behavior:'smooth'});
+}
+function deleteAnimal(id){
+  if(!confirm('¿Eliminar este animal y sus registros asociados?')) return;
+  DATA.animals = DATA.animals.filter(a=>a.id!==id);
+  DATA.health = DATA.health.filter(h=>h.animalId!==id);
+  DATA.breeding = DATA.breeding.filter(b=>b.animalId!==id);
+  DATA.production = DATA.production.filter(p=>p.animalId!==id);
+  save();
+}
+
+// ---------- SANIDAD ----------
+function addHealth(){
+  const animalId = document.getElementById('s_animal').value;
+  if(!animalId){ showToast('Selecciona un animal'); return; }
+  DATA.health.push({
+    id: uid(), animalId,
+    tipo:document.getElementById('s_tipo').value,
+    fecha:document.getElementById('s_fecha').value || todayInput(),
+    producto:document.getElementById('s_producto').value.trim(),
+    proxima:document.getElementById('s_proxima').value,
+    notas:document.getElementById('s_notas').value.trim(),
+    updatedAt: nowIso()
+  });
+  ['s_producto','s_proxima','s_notas'].forEach(f=>document.getElementById(f).value='');
+  save();
+  showToast('Evento sanitario guardado');
+}
+function deleteHealth(id){ DATA.health = DATA.health.filter(h=>h.id!==id); save(); }
+
+// ---------- REPRODUCCION ----------
+const TIPOS_INICIO_GESTACION = ['Monta','Inseminación','Transferencia de Embriones'];
+function toggleParto(){
+  const tipo = document.getElementById('r_tipo').value;
+  document.getElementById('r_fpartoLabel').style.display = TIPOS_INICIO_GESTACION.includes(tipo) ? 'block':'none';
+}
+function autoDueDate(){
+  const tipo = document.getElementById('r_tipo').value;
+  const f = document.getElementById('r_fecha').value;
+  if(TIPOS_INICIO_GESTACION.includes(tipo) && f){
+    const d = new Date(f); d.setDate(d.getDate()+283); // gestación bovina promedio
+    document.getElementById('r_fparto').value = d.toISOString().slice(0,10);
+  }
+}
+function addBreeding(){
+  const animalId = document.getElementById('r_animal').value;
+  if(!animalId){ showToast('Selecciona la hembra'); return; }
+  DATA.breeding.push({
+    id: uid(), animalId,
+    tipo:document.getElementById('r_tipo').value,
+    fecha:document.getElementById('r_fecha').value || todayInput(),
+    padre:document.getElementById('r_padre').value.trim(),
+    fparto:document.getElementById('r_fparto').value,
+    resultado:document.getElementById('r_resultado').value.trim(),
+    notas:document.getElementById('r_notas').value.trim(),
+    updatedAt: nowIso()
+  });
+  ['r_padre','r_fparto','r_resultado','r_notas'].forEach(f=>document.getElementById(f).value='');
+  save();
+  showToast('Registro reproductivo guardado');
+}
+function deleteBreeding(id){ DATA.breeding = DATA.breeding.filter(b=>b.id!==id); save(); }
+
+const GESTACION_DIAS = 283; // promedio bovino
+
+function contarPartos(animalId){
+  const animal = DATA.animals.find(a=>a.id===animalId);
+  const previos = animal ? (animal.partosPrevios||0) : 0;
+  const registrados = DATA.breeding.filter(b=>b.animalId===animalId && b.tipo==='Parto').length;
+  return previos + registrados;
+}
+
+function gestacionesActivas(){
+  const byAnimal = {};
+  DATA.breeding.forEach(r=>{
+    (byAnimal[r.animalId] = byAnimal[r.animalId]||[]).push(r);
+  });
+  const activas = [];
+  Object.entries(byAnimal).forEach(([animalId, records])=>{
+    const sorted = [...records].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+    const lastMonta = sorted.find(r=>TIPOS_INICIO_GESTACION.includes(r.tipo));
+    if(!lastMonta) return;
+    const partoDespues = sorted.find(r=>r.tipo==='Parto' && new Date(r.fecha) >= new Date(lastMonta.fecha));
+    if(partoDespues) return; // ya parió después de esa monta
+    const animal = DATA.animals.find(a=>a.id===animalId);
+    if(!animal) return;
+    const dias = Math.floor((new Date(todayInput()) - new Date(lastMonta.fecha))/86400000);
+    if(dias < 0) return;
+    activas.push({
+      animal, fechaMonta: lastMonta.fecha,
+      dias, restantes: GESTACION_DIAS - dias,
+      fparto: lastMonta.fparto || null
+    });
+  });
+  return activas.sort((a,b)=>a.restantes-b.restantes);
+}
+
+function renderGestacionesActivas(){
+  const box = document.getElementById('listGestacionesActivas');
+  const activas = gestacionesActivas();
+  if(!activas.length){
+    box.innerHTML = `<div class="empty"><b>No hay gestaciones activas</b>Registra una monta o inseminación abajo para empezar el conteo de días.</div>`;
+    return;
+  }
+  box.innerHTML = activas.map(g=>{
+    const pct = Math.max(0, Math.min(100, (g.dias/GESTACION_DIAS)*100));
+    const near = g.restantes<=21;
+    const estado = g.restantes<0 ? `<span class="badge warn">Parto vencido por ${Math.abs(g.restantes)} días</span>`
+      : near ? `<span class="badge warn">Faltan ${g.restantes} días</span>`
+      : `<span class="badge ok">Faltan ${g.restantes} días</span>`;
+    return `<div class="gest-card">
+      <div class="name">${g.animal.nombre||'(sin nombre)'} ${g.animal.arete?'· '+g.animal.arete:''}</div>
+      <div class="meta">Monta: ${g.fechaMonta} · Día ${g.dias} de ${GESTACION_DIAS} · ${estado}</div>
+      <div class="gest-bar-track"><div class="gest-bar-fill ${near?'near':''}" style="width:${pct}%"></div></div>
+      <div class="meta">Parto probable: ${g.fparto || calcFecha(g.fechaMonta, GESTACION_DIAS)}</div>
+    </div>`;
+  }).join('');
+}
+function calcFecha(fechaInicio, dias){
+  const d = new Date(fechaInicio+'T00:00:00');
+  d.setDate(d.getDate()+dias);
+  return d.toISOString().slice(0,10);
+}
+
+// ---------- PRODUCCION ----------
+function addProduction(){
+  const animalId = document.getElementById('p_animal').value;
+  if(!animalId){ showToast('Selecciona un animal'); return; }
+  DATA.production.push({
+    id: uid(), animalId,
+    tipo:document.getElementById('p_tipo').value,
+    fecha:document.getElementById('p_fecha').value || todayInput(),
+    valor:document.getElementById('p_valor').value,
+    notas:document.getElementById('p_notas').value.trim(),
+    updatedAt: nowIso()
+  });
+  ['p_valor','p_notas'].forEach(f=>document.getElementById(f).value='');
+  save();
+  showToast('Registro de producción guardado');
+}
+function deleteProduction(id){ DATA.production = DATA.production.filter(p=>p.id!==id); save(); }
+
+// ---------- BUSCAR / HISTORIAL POR NOMBRE ----------
+function renderHistorialAnimal(){
+  const q = document.getElementById('h_buscar').value.trim().toLowerCase();
+  const box = document.getElementById('h_resultado');
+  if(!q){ box.innerHTML=''; return; }
+  const animal = DATA.animals.find(a=>(a.nombre||'').toLowerCase()===q)
+    || DATA.animals.find(a=>(a.nombre||'').toLowerCase().includes(q));
+  if(!animal){
+    box.innerHTML = `<div class="card"><div class="empty"><b>No se encontró</b>Ningún animal coincide con "${q}".</div></div>`;
+    return;
+  }
+  const health = DATA.health.filter(h=>h.animalId===animal.id).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  const breeding = DATA.breeding.filter(r=>r.animalId===animal.id).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  const production = DATA.production.filter(p=>p.animalId===animal.id).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  const gest = gestacionesActivas().find(g=>g.animal.id===animal.id);
+  const gestPct = gest ? Math.max(0, Math.min(100, (gest.dias/GESTACION_DIAS)*100)) : 0;
+
+  box.innerHTML = `
+    <div class="card">
+      <h2>${animal.nombre||'(sin nombre)'} ${animal.arete?'· '+animal.arete:''}</h2>
+      <div class="meta">${animal.sexo} · ${animal.raza||'raza n/d'} · ${animal.peso?animal.peso+' lb':'peso n/d'} · nac. ${animal.nacimiento||'n/d'}${calcularEdad(animal.nacimiento)?' ('+calcularEdad(animal.nacimiento)+')':''} ·
+        <span class="badge ${animal.estado==='Activo'?'ok':animal.estado==='Vendido'?'neutral':'warn'}">${animal.estado}</span>
+        ${animal.sexo==='Hembra'?` <span class="badge neutral">🐮 ${contarPartos(animal.id)} parto${contarPartos(animal.id)===1?'':'s'}</span>`:''}
+      </div>
+      ${animal.notas?`<div class="meta" style="margin-top:6px;">Notas: ${animal.notas}</div>`:''}
+      ${gest?`
+        <div style="margin-top:10px;">
+          <span class="badge warn">🤰 Día ${gest.dias} de gestación</span>
+          <div class="meta" style="margin-top:4px;">Monta: ${gest.fechaMonta} · faltan ${gest.restantes} días · parto probable: ${gest.fparto || calcFecha(gest.fechaMonta, GESTACION_DIAS)}</div>
+          <div class="gest-bar-track"><div class="gest-bar-fill ${gest.restantes<=21?'near':''}" style="width:${gestPct}%"></div></div>
+        </div>`:''}
+      <button class="btn secondary" onclick="exportAnimalHistory('${animal.id}')">⬇ Descargar historial en Excel</button>
+    </div>
+    <div class="card">
+      <h2>Sanidad (${health.length})</h2>
+      ${health.length? health.map(h=>`<div class="item"><div><div class="name">${h.tipo} — ${h.producto||''}</div><div class="meta">${h.fecha}${h.proxima?' · próxima: '+h.proxima:''} ${h.notas?'· '+h.notas:''}</div></div></div>`).join('') : `<div class="empty">Sin eventos sanitarios.</div>`}
+    </div>
+    <div class="card">
+      <h2>Gestación (${breeding.length})</h2>
+      ${breeding.length? breeding.map(r=>`<div class="item"><div><div class="name">${r.tipo}${r.padre?' con '+r.padre:''}</div><div class="meta">${r.fecha}${r.fparto?' · parto probable: '+r.fparto:''} ${r.resultado?'· '+r.resultado:''}</div></div></div>`).join('') : `<div class="empty">Sin registros reproductivos.</div>`}
+    </div>
+    <div class="card">
+      <h2>Producción (${production.length})</h2>
+      ${production.length? production.map(p=>`<div class="item"><div><div class="name">${p.tipo} — ${p.valor||'0'}</div><div class="meta">${p.fecha} ${p.notas?'· '+p.notas:''}</div></div></div>`).join('') : `<div class="empty">Sin registros de producción.</div>`}
+    </div>`;
+}
+
+function csvEscape(val){
+  const s = String(val==null?'':val);
+  if(/[;"\n]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function exportAnimalHistory(animalId){
+  const a = DATA.animals.find(x=>x.id===animalId);
+  if(!a) return;
+  const rows = [['Categoría','Fecha','Detalle 1','Detalle 2','Detalle 3','Notas']];
+  rows.push(['Datos generales', a.nacimiento||'', 'Nombre: '+(a.nombre||''), 'Arete: '+(a.arete||''), `${a.sexo||''} · ${a.raza||''} · ${calcularEdad(a.nacimiento)||'edad n/d'} · ${a.peso?a.peso+' lb':''} · ${a.estado||''}${a.sexo==='Hembra'?' · '+contarPartos(a.id)+' partos':''}`, a.notas||'']);
+  DATA.health.filter(h=>h.animalId===animalId).sort((x,y)=>new Date(x.fecha)-new Date(y.fecha)).forEach(h=>{
+    rows.push(['Sanidad', h.fecha, h.tipo, h.producto||'', h.proxima?'Próxima: '+h.proxima:'', h.notas||'']);
+  });
+  DATA.breeding.filter(r=>r.animalId===animalId).sort((x,y)=>new Date(x.fecha)-new Date(y.fecha)).forEach(r=>{
+    rows.push(['Gestación', r.fecha, r.tipo, r.padre||'', r.fparto?'Parto probable: '+r.fparto:(r.resultado||''), r.notas||'']);
+  });
+  DATA.production.filter(p=>p.animalId===animalId).sort((x,y)=>new Date(x.fecha)-new Date(y.fecha)).forEach(p=>{
+    rows.push(['Producción', p.fecha, p.tipo, String(p.valor||''), '', p.notas||'']);
+  });
+  const csv = rows.map(r=>r.map(csvEscape).join(';')).join('\r\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const safeName = (a.nombre||'animal').replace(/[^a-z0-9áéíóúñ]+/gi,'_');
+  link.href = url; link.download = 'historial-'+safeName+'.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast('Historial descargado, ábrelo con Excel');
+}
+
+// ---------- QUESERIA ----------
+function addCheese(){
+  const fechaInicio = document.getElementById('q_fecha_inicio').value || todayInput();
+  const fechaFin = document.getElementById('q_fecha_fin').value || fechaInicio;
+  const litros = parseFloat(document.getElementById('q_litros').value)||0;
+  const kg = parseFloat(document.getElementById('q_kg').value)||0;
+  if(!litros && !kg){ showToast('Ingresa litros de leche o libras de queso'); return; }
+  if(new Date(fechaFin) < new Date(fechaInicio)){ showToast('La fecha fin no puede ser anterior a la fecha inicio'); return; }
+  DATA.cheese = DATA.cheese || [];
+  DATA.cheese.push({
+    id: uid(), fechaInicio, fechaFin,
+    tipoQueso: document.getElementById('q_tipo').value.trim(),
+    litros, kg,
+    rendimiento: litros ? +( (kg/litros)*100 ).toFixed(1) : null,
+    notas: document.getElementById('q_notas').value.trim(),
+    updatedAt: nowIso()
+  });
+  ['q_tipo','q_litros','q_kg','q_notas'].forEach(f=>document.getElementById(f).value='');
+  save();
+  showToast('Producción de queso guardada');
+}
+function deleteCheese(id){ DATA.cheese = (DATA.cheese||[]).filter(c=>c.id!==id); save(); }
+// compatibilidad: registros antiguos solo tenían "fecha" (un solo día)
+function cheeseFechaFin(c){ return c.fechaFin || c.fecha || todayInput(); }
+function cheeseFechaInicio(c){ return c.fechaInicio || c.fecha || todayInput(); }
+
+// Semana ISO: YYYY-Wnn
+function getWeekLabel(dateStr){
+  if(!dateStr) return 'Sin fecha';
+  const d = new Date(dateStr+'T00:00:00Z');
+  const dayNum = (d.getUTCDay()+6)%7; // lunes=0
+  d.setUTCDate(d.getUTCDate()-dayNum+3);
+  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(),0,4));
+  const fdNum = (firstThursday.getUTCDay()+6)%7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate()-fdNum+3);
+  const week = 1 + Math.round((d - firstThursday)/(7*86400000));
+  return d.getUTCFullYear()+'-S'+String(week).padStart(2,'0');
+}
+function weeklyRangeLabel(weekKey){
+  // aproximado, solo referencia visual
+  return weekKey.replace('-S',' · semana ');
+}
+function weeklySummary(){
+  const map = {};
+  DATA.production.filter(p=>p.tipo==='Producción de leche (L/día)').forEach(p=>{
+    const wk = getWeekLabel(p.fecha);
+    map[wk] = map[wk] || {leche:0, queso:0, litrosQueso:0};
+    map[wk].leche += parseFloat(p.valor)||0;
+  });
+  (DATA.cheese||[]).forEach(c=>{
+    const wk = getWeekLabel(cheeseFechaFin(c));
+    map[wk] = map[wk] || {leche:0, queso:0, litrosQueso:0};
+    map[wk].queso += parseFloat(c.kg)||0;
+    map[wk].litrosQueso += parseFloat(c.litros)||0;
+  });
+  return Object.entries(map).sort((a,b)=> b[0].localeCompare(a[0])).slice(0,8);
+}
+
+// ---------- SYNC ----------
+function exportData(){
+  DATA.lastSync = nowIso();
+  const blob = new Blob([JSON.stringify(DATA,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ganado-'+DATA.deviceId+'-'+todayInput()+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  save();
+  showToast('Archivo exportado');
+}
+function mergeArrays(local, incoming){
+  const map = {};
+  local.forEach(item=>map[item.id]=item);
+  incoming.forEach(item=>{
+    const existing = map[item.id];
+    if(!existing || new Date(item.updatedAt) > new Date(existing.updatedAt)){
+      map[item.id] = item;
+    }
+  });
+  return Object.values(map);
+}
+function importData(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e =>{
+    try{
+      const incoming = JSON.parse(e.target.result);
+      DATA.animals = mergeArrays(DATA.animals, incoming.animals||[]);
+      DATA.health = mergeArrays(DATA.health, incoming.health||[]);
+      DATA.breeding = mergeArrays(DATA.breeding, incoming.breeding||[]);
+      DATA.production = mergeArrays(DATA.production, incoming.production||[]);
+      DATA.cheese = mergeArrays(DATA.cheese||[], incoming.cheese||[]);
+      DATA.lastSync = nowIso();
+      save();
+      showToast('Datos fusionados correctamente');
+    }catch(err){
+      showToast('Archivo inválido');
+    }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+function resetAll(){
+  if(!confirm('Esto borrará TODOS los datos de este dispositivo. ¿Continuar?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  DATA = loadData();
+  save();
+}
+
+// ---------- RENDER ----------
+function animalLabel(a){ return (a.nombre || '(sin nombre)') + (a.arete? ' · '+a.arete : ''); }
+
+function fillAnimalSelects(){
+  const selects = ['s_animal','r_animal','p_animal'];
+  selects.forEach(sid=>{
+    const sel = document.getElementById(sid);
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Selecciona…</option>' +
+      DATA.animals.filter(a=>a.estado==='Activo' || sid!=='r_animal')
+        .map(a=>`<option value="${a.id}">${animalLabel(a)}</option>`).join('');
+    if(current) sel.value = current;
+  });
+}
+
+function render(){
+  document.getElementById('deviceId').textContent = DATA.deviceId;
+  document.getElementById('mAnimals').textContent = DATA.animals.filter(a=>a.estado==='Activo').length;
+  document.getElementById('mHealth').textContent = DATA.health.length;
+  document.getElementById('mBreeding').textContent = gestacionesActivas().length;
+  document.getElementById('lastSyncInfo').textContent = DATA.lastSync ? 'Última sincronización: '+new Date(DATA.lastSync).toLocaleString() : 'Aún no se ha sincronizado';
+
+  fillAnimalSelects();
+  renderGestacionesActivas();
+  document.getElementById('h_lista_nombres').innerHTML = DATA.animals.map(a=>`<option value="${(a.nombre||'').replace(/"/g,'')}">`).join('');
+  renderHistorialAnimal();
+
+  // Animales list
+  const la = document.getElementById('listAnimales');
+  const gestMap = {};
+  gestacionesActivas().forEach(g=>{ gestMap[g.animal.id] = g; });
+  const animalsSorted = [...DATA.animals].sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));
+  la.innerHTML = animalsSorted.length ? animalsSorted.map(a=>`
+    <div class="item">
+      <div>
+        <div class="name">${a.nombre||'(sin nombre)'}</div>
+        <span class="id-tag">${a.arete||'sin arete'}</span> <span class="meta">${a.raza||'raza n/d'}</span>
+        <div class="meta">${a.sexo} · ${a.peso?a.peso+' lb':'peso n/d'} · nac. ${a.nacimiento||'n/d'}${calcularEdad(a.nacimiento)?' ('+calcularEdad(a.nacimiento)+')':''} ·
+          <span class="badge ${a.estado==='Activo'?'ok':a.estado==='Vendido'?'neutral':'warn'}">${a.estado}</span>
+          ${a.sexo==='Hembra'?` <span class="badge neutral">🐮 ${contarPartos(a.id)} parto${contarPartos(a.id)===1?'':'s'}</span>`:''}
+          ${gestMap[a.id]?` <span class="badge warn">🤰 Día ${gestMap[a.id].dias} de gestación</span>`:''}
+        </div>
+      </div>
+      <div class="item-actions"><button onclick="editAnimal('${a.id}')" style="color:var(--pasture-700);margin-right:10px;">Editar</button><button onclick="deleteAnimal('${a.id}')">Eliminar</button></div>
+    </div>`).join('') : `<div class="empty"><b>Aún no hay animales</b>Registra el primero con el formulario de arriba.</div>`;
+
+  // Sanidad list
+  const ls = document.getElementById('listSanidad');
+  const healthSorted = [...DATA.health].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  ls.innerHTML = healthSorted.length ? healthSorted.map(h=>{
+    const an = DATA.animals.find(a=>a.id===h.animalId);
+    return `<div class="item">
+      <div>
+        <span class="id-tag">${an?(an.nombre||an.arete||'—'):'—'}</span>
+        <div class="name">${h.tipo} — ${h.producto||''}</div>
+        <div class="meta">${h.fecha}${h.proxima?' · próxima: '+h.proxima:''} ${h.notas?'· '+h.notas:''}</div>
+      </div>
+      <div class="item-actions"><button onclick="deleteHealth('${h.id}')">Eliminar</button></div>
+    </div>`;
+  }).join('') : `<div class="empty"><b>Sin eventos sanitarios</b>Vacunas, desparasitaciones y tratamientos aparecerán aquí.</div>`;
+
+  // Reproduccion list
+  const lr = document.getElementById('listReproduccion');
+  const breedingSorted = [...DATA.breeding].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  lr.innerHTML = breedingSorted.length ? breedingSorted.map(r=>{
+    const an = DATA.animals.find(a=>a.id===r.animalId);
+    return `<div class="item">
+      <div>
+        <span class="id-tag">${an?(an.nombre||an.arete||'—'):'—'}</span>
+        <div class="name">${r.tipo}${r.padre?' con '+r.padre:''}</div>
+        <div class="meta">${r.fecha}${r.fparto?' · parto probable: '+r.fparto:''} ${r.resultado?'· '+r.resultado:''}</div>
+      </div>
+      <div class="item-actions"><button onclick="deleteBreeding('${r.id}')">Eliminar</button></div>
+    </div>`;
+  }).join('') : `<div class="empty"><b>Sin registros reproductivos</b>Montas, gestaciones y partos aparecerán aquí.</div>`;
+
+  // Produccion list
+  const lp = document.getElementById('listProduccion');
+  const prodSorted = [...DATA.production].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  lp.innerHTML = prodSorted.length ? prodSorted.map(p=>{
+    const an = DATA.animals.find(a=>a.id===p.animalId);
+    return `<div class="item">
+      <div>
+        <span class="id-tag">${an?(an.nombre||an.arete||'—'):'—'}</span>
+        <div class="name">${p.tipo} — ${p.valor||'0'}</div>
+        <div class="meta">${p.fecha} ${p.notas?'· '+p.notas:''}</div>
+      </div>
+      <div class="item-actions"><button onclick="deleteProduction('${p.id}')">Eliminar</button></div>
+    </div>`;
+  }).join('') : `<div class="empty"><b>Sin registros de producción</b>Pesajes, leche y ventas aparecerán aquí.</div>`;
+
+  // Queseria list
+  const lq = document.getElementById('listQueseria');
+  const cheeseSorted = [...(DATA.cheese||[])].sort((a,b)=>new Date(cheeseFechaFin(b))-new Date(cheeseFechaFin(a)));
+  lq.innerHTML = cheeseSorted.length ? cheeseSorted.map(c=>`
+    <div class="item">
+      <div>
+        <div class="name">${c.tipoQueso||'Queso'} — ${c.kg||0} lb</div>
+        <div class="meta">Del ${cheeseFechaInicio(c)} al ${cheeseFechaFin(c)} · leche usada: ${c.litros||0} L ${c.rendimiento?'· rendimiento '+c.rendimiento+'%':''} ${c.notas?'· '+c.notas:''}</div>
+      </div>
+      <div class="item-actions"><button onclick="deleteCheese('${c.id}')">Eliminar</button></div>
+    </div>`).join('') : `<div class="empty"><b>Sin producción de queso</b>Registra tus lotes de queso arriba.</div>`;
+
+  // Resumen semanal
+  const ws = document.getElementById('weeklySummary');
+  const weeks = weeklySummary();
+  ws.innerHTML = weeks.length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+      <thead><tr style="text-align:left;color:#6a624c;">
+        <th style="padding:6px 4px;border-bottom:1px solid var(--parchment-dark);">Semana</th>
+        <th style="padding:6px 4px;border-bottom:1px solid var(--parchment-dark);">Leche (L)</th>
+        <th style="padding:6px 4px;border-bottom:1px solid var(--parchment-dark);">Queso (lb)</th>
+      </tr></thead>
+      <tbody>
+        ${weeks.map(([wk,v])=>`<tr>
+          <td style="padding:6px 4px;border-bottom:1px solid var(--parchment-dark);font-weight:600;">${wk}</td>
+          <td style="padding:6px 4px;border-bottom:1px solid var(--parchment-dark);">${v.leche.toFixed(1)}</td>
+          <td style="padding:6px 4px;border-bottom:1px solid var(--parchment-dark);">${v.queso.toFixed(1)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>` : `<div class="empty"><b>Aún no hay datos suficientes</b>Registra producción de leche (en Producción) y de queso para ver el resumen por semana.</div>`;
+}
+
+document.getElementById('s_fecha').value = todayInput();
+document.getElementById('r_fecha').value = todayInput();
+document.getElementById('p_fecha').value = todayInput();
+document.getElementById('q_fecha_fin').value = todayInput();
+document.getElementById('q_fecha_inicio').value = calcFecha(todayInput(), -6);
+render();
+</script>
+</body>
+</html>
