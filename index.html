@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -151,9 +152,9 @@
   .badge{
     display:inline-block; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:700;
   }
-  .badge.ok{background:#e4ede0; color:var(--ok);} 
-  .badge.warn{background:#f6e3da; color:var(--warn);} 
-  .badge.neutral{background:#eee7d4; color:var(--pasture-700);} 
+  .badge.ok{background:#e4ede0; color:var(--ok);}
+  .badge.warn{background:#f6e3da; color:var(--warn);}
+  .badge.neutral{background:#eee7d4; color:var(--pasture-700);}
 
   .sync-box{
     background:var(--pasture-900); color:var(--parchment); border-radius:var(--radius); padding:18px;
@@ -178,19 +179,45 @@
   .gest-bar-fill{
     height:100%; background:var(--leather); border-radius:6px;
   }
-  .gest-bar-fill.near{background:var(--ochre);} 
+  .gest-bar-fill.near{background:var(--ochre);}
   .gest-card{border-top:1px solid var(--parchment-dark); padding:12px 0;}
   .gest-card:first-child{border-top:none;padding-top:0;}
+  #fincaOverlay{
+    position:fixed; inset:0; background:var(--pasture-900); z-index:200;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  #fincaOverlay .box{
+    background:#fffdf7; border-radius:14px; padding:26px; max-width:420px; width:100%;
+    box-shadow:0 10px 40px rgba(0,0,0,0.4);
+  }
+  #fincaOverlay h2{font-family:'Fraunces',serif; margin:0 0 8px; color:var(--pasture-900);}
+  #fincaOverlay p{font-size:13.5px; color:#6a624c; line-height:1.5; margin:0 0 14px;}
+  #fincaOverlay input{margin-bottom:12px;}
+  .conn-dot{
+    display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle;
+  }
+  .conn-dot.online{background:#5ea55e;}
+  .conn-dot.offline{background:#c9843e;}
 </style>
 </head>
 <body>
+
+<div id="fincaOverlay">
+  <div class="box">
+    <h2>🐄 Control Ganadero</h2>
+    <p>Para sincronizar automáticamente con la otra persona, ambos deben usar el mismo <b>código de finca</b>. Si es la primera vez, inventa uno (ej. "ranchoelrobles") y compártelo con la otra persona para que lo use igual.</p>
+    <label style="display:block;font-size:12px;font-weight:600;color:var(--pasture-700);margin-bottom:4px;">Código de finca</label>
+    <input id="fincaInput" placeholder="ej. ranchoelrobles" autocomplete="off">
+    <button class="btn" style="width:100%;justify-content:center;" onclick="entrarFinca()">Entrar</button>
+  </div>
+</div>
 
 <header>
   <div class="brand">
     <div class="tag">🐄</div>
     <div>
       <h1>Control Ganadero</h1>
-      <p class="sub">Registro de hato bovino · funciona sin conexión</p>
+      <p class="sub" id="connStatus"><span class="conn-dot offline"></span>Conectando…</p>
     </div>
   </div>
   <div class="herdcount">
@@ -348,8 +375,14 @@
   <!-- SYNC -->
   <section class="panel" id="panel-sync">
     <div class="sync-box card">
-      <h2>Sincronizar entre dos dispositivos</h2>
-      <p>Esta app guarda todo en este dispositivo, sin necesidad de internet. Para juntar los datos de dos personas: cada quien exporta su archivo y lo importa en el otro dispositivo (por WhatsApp, correo, USB, etc). Los registros se combinan automáticamente por fecha de última edición, sin perder información.</p>
+      <h2>☁ Sincronización automática en línea</h2>
+      <p>Esta app está conectada a tu finca en la nube. Cuando hay internet, todo lo que registres aparece solo en el otro celular (y viceversa). Cuando no hay señal, sigue funcionando normal y se pone al día apenas vuelva la conexión.</p>
+      <div class="device-id">Código de finca: <span id="fincaLabel">—</span></div>
+      <button class="btn secondary" onclick="cambiarFinca()">Cambiar / unirme a otra finca</button>
+    </div>
+    <div class="sync-box card">
+      <h2>Respaldo manual (opcional)</h2>
+      <p>Esta app guarda todo en este dispositivo, sin necesidad de internet. Como respaldo extra a la sincronización automática, también puedes exportar/importar un archivo manualmente entre dos dispositivos. Los registros se combinan automáticamente por fecha de última edición, sin perder información.</p>
       <div class="device-id">ID de este dispositivo: <span id="deviceId"></span></div>
       <button class="btn" onclick="exportData()">⬇ Exportar datos (.json)</button>
       <div style="margin-top:14px;">
@@ -369,6 +402,17 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+window.addEventListener('error', function(e){
+  if(e && e.message && /firebase/i.test(e.message)){
+    var el = document.getElementById('connStatus');
+    if(el) el.innerHTML = '<span class="conn-dot offline"></span>Sin internet · modo local';
+  }
+});
+</script>
 <script>
 const STORAGE_KEY = 'ganado_data_v1';
 
@@ -402,6 +446,120 @@ function loadData(){
 let DATA = loadData();
 DATA.cheese = DATA.cheese || [];
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); render(); }
+
+// ---------- FIREBASE / SINCRONIZACIÓN EN LÍNEA ----------
+const firebaseConfig = {
+  apiKey: "AIzaSyCWmd4mEDnRqWz4NCyZaf_jqLVGTaRVSWw",
+  authDomain: "control-ganadero-4375e.firebaseapp.com",
+  projectId: "control-ganadero-4375e",
+  storageBucket: "control-ganadero-4375e.firebasestorage.app",
+  messagingSenderId: "184552583903",
+  appId: "1:184552583903:web:5352987deb375c6a606f6a"
+};
+let fbApp=null, db=null, FINCA=null, fbReady=false;
+
+function initFirebase(){
+  try{
+    fbApp = firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+    fbReady = true;
+  }catch(e){ console.error('Firebase init error', e); fbReady=false; }
+}
+
+function updateConnStatus(){
+  const el = document.getElementById('connStatus');
+  if(!el) return;
+  if(!fbReady){
+    el.innerHTML = '<span class="conn-dot offline"></span>Modo local (sin Firebase)';
+  }else if(navigator.onLine){
+    el.innerHTML = '<span class="conn-dot online"></span>En línea · finca: '+(FINCA||'—');
+  }else{
+    el.innerHTML = '<span class="conn-dot offline"></span>Sin conexión · guardando local, finca: '+(FINCA||'—');
+  }
+}
+window.addEventListener('online', updateConnStatus);
+window.addEventListener('offline', updateConnStatus);
+
+function normalizeFincaCode(v){
+  return (v||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+}
+function entrarFinca(){
+  const code = normalizeFincaCode(document.getElementById('fincaInput').value);
+  if(!code){ alert('Escribe un código de finca'); return; }
+  localStorage.setItem('finca_code', code);
+  document.getElementById('fincaOverlay').style.display='none';
+  conectarFinca(code);
+}
+function conectarFinca(code){
+  FINCA = code;
+  updateConnStatus();
+  if(!fbReady){ return; }
+  firebase.auth().signInAnonymously().then(()=>{
+    return sincronizacionInicial();
+  }).then(()=>{
+    attachListeners();
+  }).catch(e=>{ console.error('Error de conexión con la finca', e); updateConnStatus(); });
+}
+
+// Se ejecuta UNA vez al conectar: fusiona lo que ya había en este dispositivo
+// con lo que ya existe en la nube, para no perder nada de ningún lado.
+async function sincronizacionInicial(){
+  const base = db.collection('fincas').doc(FINCA);
+  const colecciones = ['animals','health','breeding','production','cheese'];
+  for(const col of colecciones){
+    const snap = await base.collection(col).get();
+    const cloudArr = snap.docs.map(d=>d.data());
+    const localArr = DATA[col] || [];
+    const merged = mergeArrays(localArr, cloudArr);
+    DATA[col] = merged;
+    if(merged.length){
+      const batch = db.batch();
+      merged.forEach(rec=>{ batch.set(base.collection(col).doc(rec.id), rec); });
+      await batch.commit().catch(e=>console.error('Error subiendo '+col, e));
+    }
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+  render();
+}
+
+function attachListeners(){
+  const base = db.collection('fincas').doc(FINCA);
+  const colecciones = ['animals','health','breeding','production','cheese'];
+  colecciones.forEach(col=>{
+    base.collection(col).onSnapshot(snap=>{
+      DATA[col] = snap.docs.map(d=>d.data());
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+      render();
+      updateConnStatus();
+    }, err=>{ console.error('Error escuchando '+col, err); });
+  });
+}
+
+function syncToCloud(col, record){
+  if(!fbReady || !FINCA || !db) return;
+  db.collection('fincas').doc(FINCA).collection(col).doc(record.id).set(record).catch(e=>console.error('Sync error', e));
+}
+function syncDeleteFromCloud(col, id){
+  if(!fbReady || !FINCA || !db) return;
+  db.collection('fincas').doc(FINCA).collection(col).doc(id).delete().catch(e=>console.error('Delete sync error', e));
+}
+
+function cambiarFinca(){
+  document.getElementById('fincaInput').value = FINCA||'';
+  document.getElementById('fincaOverlay').style.display='flex';
+}
+
+initFirebase();
+updateConnStatus();
+{
+  const savedCode = localStorage.getItem('finca_code');
+  if(savedCode){
+    document.getElementById('fincaInput').value = savedCode;
+    document.getElementById('fincaOverlay').style.display='none';
+    conectarFinca(savedCode);
+  }
+}
 
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -440,6 +598,7 @@ function addAnimal(){
   if(wasEditing){
     const idx = DATA.animals.findIndex(a=>a.id===editingAnimalId);
     if(idx>-1) DATA.animals[idx] = {...DATA.animals[idx], ...record};
+    record.id = editingAnimalId;
     editingAnimalId = null;
     document.getElementById('animalSubmitBtn').textContent = 'Guardar animal';
   }else{
@@ -450,6 +609,7 @@ function addAnimal(){
   document.getElementById('a_sexo').value='Hembra';
   document.getElementById('a_estado').value='Activo';
   save();
+  syncToCloud('animals', record);
   showToast(wasEditing ? 'Animal actualizado' : 'Animal guardado');
 }
 function editAnimal(id){
@@ -470,18 +630,25 @@ function editAnimal(id){
 }
 function deleteAnimal(id){
   if(!confirm('¿Eliminar este animal y sus registros asociados?')) return;
+  const healthIds = DATA.health.filter(h=>h.animalId===id).map(h=>h.id);
+  const breedingIds = DATA.breeding.filter(b=>b.animalId===id).map(b=>b.id);
+  const productionIds = DATA.production.filter(p=>p.animalId===id).map(p=>p.id);
   DATA.animals = DATA.animals.filter(a=>a.id!==id);
   DATA.health = DATA.health.filter(h=>h.animalId!==id);
   DATA.breeding = DATA.breeding.filter(b=>b.animalId!==id);
   DATA.production = DATA.production.filter(p=>p.animalId!==id);
   save();
+  syncDeleteFromCloud('animals', id);
+  healthIds.forEach(hid=>syncDeleteFromCloud('health', hid));
+  breedingIds.forEach(bid=>syncDeleteFromCloud('breeding', bid));
+  productionIds.forEach(pid=>syncDeleteFromCloud('production', pid));
 }
 
 // ---------- SANIDAD ----------
 function addHealth(){
   const animalId = document.getElementById('s_animal').value;
   if(!animalId){ showToast('Selecciona un animal'); return; }
-  DATA.health.push({
+  const record = {
     id: uid(), animalId,
     tipo:document.getElementById('s_tipo').value,
     fecha:document.getElementById('s_fecha').value || todayInput(),
@@ -489,12 +656,14 @@ function addHealth(){
     proxima:document.getElementById('s_proxima').value,
     notas:document.getElementById('s_notas').value.trim(),
     updatedAt: nowIso()
-  });
+  };
+  DATA.health.push(record);
   ['s_producto','s_proxima','s_notas'].forEach(f=>document.getElementById(f).value='');
   save();
+  syncToCloud('health', record);
   showToast('Evento sanitario guardado');
 }
-function deleteHealth(id){ DATA.health = DATA.health.filter(h=>h.id!==id); save(); }
+function deleteHealth(id){ DATA.health = DATA.health.filter(h=>h.id!==id); save(); syncDeleteFromCloud('health', id); }
 
 // ---------- REPRODUCCION ----------
 const TIPOS_INICIO_GESTACION = ['Monta','Inseminación','Transferencia de Embriones'];
@@ -513,7 +682,7 @@ function autoDueDate(){
 function addBreeding(){
   const animalId = document.getElementById('r_animal').value;
   if(!animalId){ showToast('Selecciona la hembra'); return; }
-  DATA.breeding.push({
+  const record = {
     id: uid(), animalId,
     tipo:document.getElementById('r_tipo').value,
     fecha:document.getElementById('r_fecha').value || todayInput(),
@@ -522,12 +691,14 @@ function addBreeding(){
     resultado:document.getElementById('r_resultado').value.trim(),
     notas:document.getElementById('r_notas').value.trim(),
     updatedAt: nowIso()
-  });
+  };
+  DATA.breeding.push(record);
   ['r_padre','r_fparto','r_resultado','r_notas'].forEach(f=>document.getElementById(f).value='');
   save();
+  syncToCloud('breeding', record);
   showToast('Registro reproductivo guardado');
 }
-function deleteBreeding(id){ DATA.breeding = DATA.breeding.filter(b=>b.id!==id); save(); }
+function deleteBreeding(id){ DATA.breeding = DATA.breeding.filter(b=>b.id!==id); save(); syncDeleteFromCloud('breeding', id); }
 
 const GESTACION_DIAS = 283; // promedio bovino
 
@@ -594,19 +765,21 @@ function calcFecha(fechaInicio, dias){
 function addProduction(){
   const animalId = document.getElementById('p_animal').value;
   if(!animalId){ showToast('Selecciona un animal'); return; }
-  DATA.production.push({
+  const record = {
     id: uid(), animalId,
     tipo:document.getElementById('p_tipo').value,
     fecha:document.getElementById('p_fecha').value || todayInput(),
     valor:document.getElementById('p_valor').value,
     notas:document.getElementById('p_notas').value.trim(),
     updatedAt: nowIso()
-  });
+  };
+  DATA.production.push(record);
   ['p_valor','p_notas'].forEach(f=>document.getElementById(f).value='');
   save();
+  syncToCloud('production', record);
   showToast('Registro de producción guardado');
 }
-function deleteProduction(id){ DATA.production = DATA.production.filter(p=>p.id!==id); save(); }
+function deleteProduction(id){ DATA.production = DATA.production.filter(p=>p.id!==id); save(); syncDeleteFromCloud('production', id); }
 
 // ---------- BUSCAR / HISTORIAL POR NOMBRE ----------
 function renderHistorialAnimal(){
@@ -694,19 +867,21 @@ function addCheese(){
   if(!litros && !kg){ showToast('Ingresa litros de leche o libras de queso'); return; }
   if(new Date(fechaFin) < new Date(fechaInicio)){ showToast('La fecha fin no puede ser anterior a la fecha inicio'); return; }
   DATA.cheese = DATA.cheese || [];
-  DATA.cheese.push({
+  const record = {
     id: uid(), fechaInicio, fechaFin,
     tipoQueso: document.getElementById('q_tipo').value.trim(),
     litros, kg,
     rendimiento: litros ? +( (kg/litros)*100 ).toFixed(1) : null,
     notas: document.getElementById('q_notas').value.trim(),
     updatedAt: nowIso()
-  });
+  };
+  DATA.cheese.push(record);
   ['q_tipo','q_litros','q_kg','q_notas'].forEach(f=>document.getElementById(f).value='');
   save();
+  syncToCloud('cheese', record);
   showToast('Producción de queso guardada');
 }
-function deleteCheese(id){ DATA.cheese = (DATA.cheese||[]).filter(c=>c.id!==id); save(); }
+function deleteCheese(id){ DATA.cheese = (DATA.cheese||[]).filter(c=>c.id!==id); save(); syncDeleteFromCloud('cheese', id); }
 // compatibilidad: registros antiguos solo tenían "fecha" (un solo día)
 function cheeseFechaFin(c){ return c.fechaFin || c.fecha || todayInput(); }
 function cheeseFechaInicio(c){ return c.fechaInicio || c.fecha || todayInput(); }
@@ -780,7 +955,10 @@ function importData(evt){
       DATA.cheese = mergeArrays(DATA.cheese||[], incoming.cheese||[]);
       DATA.lastSync = nowIso();
       save();
-      showToast('Datos fusionados correctamente');
+      ['animals','health','breeding','production','cheese'].forEach(col=>{
+        (DATA[col]||[]).forEach(rec=>syncToCloud(col, rec));
+      });
+      showToast('Datos fusionados y subidos a la nube');
     }catch(err){
       showToast('Archivo inválido');
     }
@@ -812,6 +990,7 @@ function fillAnimalSelects(){
 
 function render(){
   document.getElementById('deviceId').textContent = DATA.deviceId;
+  document.getElementById('fincaLabel').textContent = FINCA || 'sin configurar';
   document.getElementById('mAnimals').textContent = DATA.animals.filter(a=>a.estado==='Activo').length;
   document.getElementById('mHealth').textContent = DATA.health.length;
   document.getElementById('mBreeding').textContent = gestacionesActivas().length;
